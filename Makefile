@@ -7,7 +7,6 @@ VBOX_VM_NAME := bare-metal-gophers
 kernel_target :=$(BUILD_DIR)/kernel-$(ARCH).bin
 iso_target := $(BUILD_DIR)/kernel-$(ARCH).iso
 
-ifeq ($(OS), Linux)
 export SHELL := /bin/bash -o pipefail
 
 LD := ld
@@ -21,8 +20,6 @@ AS_FLAGS := -g -f elf32 -F dwarf -I arch/$(ARCH)/asm/
 
 asm_src_files := $(wildcard arch/$(ARCH)/asm/*.s)
 asm_obj_files := $(patsubst arch/$(ARCH)/asm/%.s, $(BUILD_DIR)/arch/$(ARCH)/asm/%.o, $(asm_src_files))
-
-.PHONY: kernel iso clean
 
 kernel: $(kernel_target)
 
@@ -61,16 +58,7 @@ $(iso_target): $(kernel_target)
 	@grub-mkrescue -o $(iso_target) $(BUILD_DIR)/isofiles 2>&1 | sed -e "s/^/  | /g"
 	@rm -r $(BUILD_DIR)/isofiles
 
-else
-VAGRANT_SRC_FOLDER = /home/vagrant/bare-metal-gophers
-
-.PHONY: kernel iso vagrant-up vagrant-down vagrant-ssh run gdb clean
-
-kernel:
-	vagrant ssh -c 'cd $(VAGRANT_SRC_FOLDER); make kernel'
-
-iso:
-	vagrant ssh -c 'cd $(VAGRANT_SRC_FOLDER); make iso'
+.PHONY: kernel iso run-qemu run-vbox gdb clean
 
 run-qemu: iso
 	qemu-system-i386 -cdrom $(iso_target)
@@ -97,7 +85,6 @@ gdb: iso
 	    -ex 'continue' \
 	    -ex 'disass'
 	@killall qemu-system-i386 || true
-endif
 
 clean:
 	@test -d $(BUILD_DIR) && rm -rf $(BUILD_DIR) || true
